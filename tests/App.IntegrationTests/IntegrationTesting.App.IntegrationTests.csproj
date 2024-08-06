@@ -26,6 +26,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\App\IntegrationTesting.App.csproj" />
     <ProjectReference Include="..\..\src\Database\IntegrationTesting.Database.csproj" />
+    <ProjectReference Include="..\..\src\Setup\IntegrationTesting.Setup.csproj" />
   </ItemGroup>
 
 </Project>

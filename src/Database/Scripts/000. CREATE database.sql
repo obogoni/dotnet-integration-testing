@@ -35,7 +35,3 @@ REFERENCES [IntegrationTesting].[Products] ([Id])
 GO
 ALTER TABLE [IntegrationTesting].[Products] CHECK CONSTRAINT [FK_Products_CategoryId]
 GO
-USE [master]
-GO
-ALTER DATABASE [IntegrationTesting] SET  READ_WRITE 
-GO
