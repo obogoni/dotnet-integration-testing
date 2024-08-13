@@ -1,72 +1,87 @@
-using DotNet.Testcontainers.Containers;
+using FluentAssertions;
+using IntegrationTesting.App.Domain;
 using IntegrationTesting.App.Infrastructure;
 using IntegrationTesting.App.Infrastructure.Persistence;
-using Testcontainers.MsSql;
-using Xunit.Sdk;
-using CSharpFunctionalExtensions;
-using FluentAssertions;
-using System.Diagnostics;
-using DbUp;
-using System.Reflection;
-using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
-using IntegrationTesting.App.Domain;
+using IntegrationTesting.App.IntegrationTests;
 using IntegrationTesting.App.UseCases;
 using IntegrationTesting.Setup;
+using Microsoft.EntityFrameworkCore;
 
 namespace App.IntegrationTests;
 
-public class CreateProductTests : IntegrationTestsBase
+public class CreateProductTests : IClassFixture<DatabaseFixture>
 {
-    public CreateProductTests() 
-        : base(new DatabaseConfiguration()
-        {
-            DbName = "IntegrationTesting",
-            UserPassword = "myStr0ngPassword!",
-            MigrationsAssembly = Assembly.GetAssembly(typeof(IntegrationTesting.Database.DbConfiguration))
-        })
-    { 
+	public DatabaseFixtureBase Fixture { get; private set; }
 
-    }
+	public CreateProductTests(DatabaseFixture fixture)
+	{
+		Fixture = fixture;
+	}
 
-    [Fact]
-    public async Task Product_is_created_successfully()
-    {
+	[Fact]
+	public async Task Product_is_created_successfully()
+	{
+		//Arrange
 
-        //Arrange 
+		var dbContextOptions = new DbContextOptionsBuilder<ApplicationDbContext>()
+											.UseSqlServer(Fixture.ConnectionString)
+											.Options;
 
-        var dbContextOptions = new DbContextOptionsBuilder<ApplicationDbContext>()
-                                            .UseSqlServer(ConnectionString)
-                                            .Options;
+		using var dbContext = new ApplicationDbContext(dbContextOptions);
 
-        using var dbContext = new ApplicationDbContext(dbContextOptions);
+		var createCategoryResult = Category.Create("Drinks");
 
-        var createCategoryResult = Category.Create("Drinks");
+		var categoryRepo = new CategoryRepository(dbContext);
+		var productRepo = new ProductRepository(dbContext);
 
-        var categoryRepo = new CategoryRepository(dbContext);
-        var productRepo = new ProductRepository(dbContext);
+		var category = createCategoryResult.Value;
 
-        var category = createCategoryResult.Value;
+		await categoryRepo.AddAsync(category);
 
-        await categoryRepo.AddAsync(category);
+		var useCase = new CreateProduct(productRepo, categoryRepo);
 
-        var useCase = new CreateProduct(productRepo, categoryRepo);
+		//Act
 
-        //Act
-        
-        var createResult = await useCase.Create(new CreateRequest { Name = "Coca-Cola", Price = 10.0M, CategoryId = category.Id });
+		var createResult = await useCase.Create(new CreateRequest { Name = "Coca-Cola", Price = 10.0M, CategoryId = category.Id });
 
-        //Assert
+		//Assert
 
-        createResult.IsSuccess.Should().BeTrue();
+		createResult.IsSuccess.Should().BeTrue();
 
-        var product = createResult.Value;
-        var sameProduct = await productRepo.GetByIdAsync(product.Id);
+		var product = createResult.Value;
+		var sameProduct = await productRepo.GetByIdAsync(product.Id);
 
-        sameProduct.Should().NotBeNull();
-        sameProduct.Name.Should().Be("Coca-Cola");
-        sameProduct.Price.Should().Be(10.0M);
-        sameProduct.CategoryId.Should().Be(category.Id);
-    }
+		sameProduct.Should().NotBeNull();
+		sameProduct.Name.Should().Be("Coca-Cola");
+		sameProduct.Price.Should().Be(10.0M);
+		sameProduct.CategoryId.Should().Be(category.Id);
+	}
 
+	[Fact]
+	public async Task Product_cant_be_created_with_invalid_category()
+	{
+		//Arrange
+
+		var dbContextOptions = new DbContextOptionsBuilder<ApplicationDbContext>()
+											.UseSqlServer(Fixture.ConnectionString)
+											.Options;
+
+		using var dbContext = new ApplicationDbContext(dbContextOptions);
+
+		var productRepo = new ProductRepository(dbContext);
+		var categoryRepo = new CategoryRepository(dbContext);
+
+		var useCase = new CreateProduct(productRepo, categoryRepo);
+
+		var invalidCategoryId = -1;
+
+		//Act
+
+		var result = await useCase.Create(new CreateRequest { Name = "Coca-Cola", Price = 10.0M, CategoryId = invalidCategoryId });
+
+		//Assert
+
+		result.IsFailure.Should().BeTrue();
+		result.Error.Should().Be(CreateProduct.Errors.CategoryNotFound);
+	}
 }

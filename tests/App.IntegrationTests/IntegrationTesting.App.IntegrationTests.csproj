@@ -13,6 +13,8 @@
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
     <PackageReference Include="dbup-sqlserver" Version="5.0.41" />
     <PackageReference Include="FluentAssertions" Version="4.13.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageReference Include="Testcontainers.MsSql" Version="3.9.0" />
     <PackageReference Include="xunit" Version="2.5.3" />
@@ -25,8 +27,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\App\IntegrationTesting.App.csproj" />
-    <ProjectReference Include="..\..\src\Database\IntegrationTesting.Database.csproj" />
+    <ProjectReference Include="..\..\src\Database\IntegrationTesting.App.Database.csproj" />
     <ProjectReference Include="..\..\src\Setup\IntegrationTesting.Setup.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appSettings.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
